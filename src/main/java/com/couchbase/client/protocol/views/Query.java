@@ -503,6 +503,34 @@ public class Query {
   public String toString() {
     boolean first = true;
     StringBuffer result = new StringBuffer();
+    // brutal fixes for parameter ordering issue
+    
+    // group
+    if (args.containsKey(GROUP)) {
+    	result.append("?");
+    	first = false;
+    	String argument;
+    	// group
+        try {
+          argument = GROUP + "=" + prepareValue(GROUP, args.get(GROUP));
+        } catch (Exception ex) {
+          throw new RuntimeException("Could not prepare view argument: " + ex);
+        }
+        result.append(argument);
+    }
+    
+    // group_level
+    if (args.containsKey(GROUPLEVEL)) {
+    	result.append(first ? "?" : "&");
+    	String argument;
+		try {
+			argument = GROUPLEVEL + "=" + prepareValue(GROUPLEVEL, args.get(GROUPLEVEL));
+		} catch (Exception ex) {
+			throw new RuntimeException("Could not prepare view argument: " + ex);
+		}
+		result.append(argument);
+    }
+    
     for (Entry<String, Object> arg : args.entrySet()) {
       if (first) {
         result.append("?");
@@ -510,15 +538,17 @@ public class Query {
       } else {
         result.append("&");
       }
-      String argument;
-      try {
-        argument = arg.getKey() + "=" + prepareValue(
-          arg.getKey(), arg.getValue()
-        );
-      } catch (Exception ex) {
-        throw new RuntimeException("Could not prepare view argument: " + ex);
+      if (!GROUP.equals(arg.getKey()) && !GROUPLEVEL.equals(arg.getKey())) {
+	      String argument;
+	      try {
+	        argument = arg.getKey() + "=" + prepareValue(
+	        		arg.getKey(), arg.getValue()
+	        );
+	      } catch (Exception ex) {
+	        throw new RuntimeException("Could not prepare view argument: " + ex);
+	      }
+	      result.append(argument);
       }
-      result.append(argument);
     }
     return result.toString();
   }
