@@ -22,13 +22,6 @@
 
 package com.couchbase.client;
 
-import com.couchbase.client.ViewNode.EventLogger;
-import com.couchbase.client.ViewNode.MyHttpRequestExecutionHandler;
-import com.couchbase.client.http.AsyncConnectionManager;
-import com.couchbase.client.http.RequeueOpCallback;
-import com.couchbase.client.protocol.views.HttpOperation;
-import com.couchbase.client.vbucket.Reconfigurable;
-import com.couchbase.client.vbucket.config.Bucket;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -38,11 +31,14 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import net.spy.memcached.AddrUtil;
 import net.spy.memcached.ConnectionObserver;
 import net.spy.memcached.compat.SpyObject;
+
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
@@ -60,6 +56,14 @@ import org.apache.http.protocol.RequestExpectContinue;
 import org.apache.http.protocol.RequestTargetHost;
 import org.apache.http.protocol.RequestUserAgent;
 
+import com.couchbase.client.ViewNode.EventLogger;
+import com.couchbase.client.ViewNode.MyHttpRequestExecutionHandler;
+import com.couchbase.client.http.AsyncConnectionManager;
+import com.couchbase.client.http.RequeueOpCallback;
+import com.couchbase.client.protocol.views.HttpOperation;
+import com.couchbase.client.vbucket.Reconfigurable;
+import com.couchbase.client.vbucket.config.Bucket;
+
 
 /**
  * The ViewConnection class creates and manages the various connections
@@ -70,7 +74,7 @@ public class ViewConnection extends SpyObject implements
   private static final int NUM_CONNS = 1;
   private static final int MAX_ADDOP_RETRIES = 6;
 
-  private volatile boolean shutDown = false;
+  protected final AtomicBoolean shuttingDown = new AtomicBoolean();
   protected volatile boolean reconfiguring = false;
   protected volatile boolean running = true;
 
@@ -224,7 +228,7 @@ public class ViewConnection extends SpyObject implements
    * If shutdown is currently in progress, an Exception is thrown.
    */
   protected void checkState() {
-    if (shutDown) {
+    if (shuttingDown.get()) {
       throw new IllegalStateException("Shutting down");
     }
   }
@@ -236,12 +240,11 @@ public class ViewConnection extends SpyObject implements
    * @throws IOException
    */
   public boolean shutdown() throws IOException {
-    if (shutDown) {
+    if (!shuttingDown.compareAndSet(false, true)) {
       getLogger().info("Suppressing duplicate attempt to shut down");
       return false;
     }
 
-    shutDown = true;
     running = false;
 
     List<ViewNode> nodesToRemove = new ArrayList<ViewNode>();
