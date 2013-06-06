@@ -330,7 +330,7 @@
   <target name="docsjar" depends="docs"
       description="Create the documentation jar">
     <mkdir dir="${build.dir}/javadocs" />
-    <zip destfile="${build.dir}/javadocs/${name}-${version}.jar"
+    <zip destfile="${build.dir}/javadocs/${name}-${version}-javadoc.jar"
         basedir="${build.javadoc}" />
   </target>
 
@@ -393,7 +393,7 @@
   <target name="srcjar" depends="init,jar"
       description="Create source jars">
     <mkdir dir="${build.dir}/sources" />
-    <jar jarfile="${build.dir}/sources/${name}-${version}.jar">
+    <jar jarfile="${build.dir}/sources/${name}-${version}-sources.jar">
       <fileset dir="${src.dir}" />
       <fileset dir="${build.src.dir}" />
     </jar>
